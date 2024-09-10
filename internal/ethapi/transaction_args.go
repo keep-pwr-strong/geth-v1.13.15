@@ -501,6 +501,10 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 			Data:       args.data(),
 			AccessList: al,
 		}
+		// Check if From is provided and set it
+		if args.From != nil {
+			data.SetSender(args.From) // Set the sender using the SetSender method
+		}
 
 	case args.AccessList != nil:
 		data = &types.AccessListTx{

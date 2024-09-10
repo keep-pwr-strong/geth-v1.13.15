@@ -55,6 +55,15 @@ type AccessListTx struct {
 	Data       []byte          // contract invocation input data
 	AccessList AccessList      // EIP-2930 access list
 	V, R, S    *big.Int        // signature values
+	Sender     *common.Address // signature values
+}
+
+func (tx *AccessListTx) GetSender() *common.Address {
+	return tx.Sender
+}
+
+func (tx *AccessListTx) SetSender(sender *common.Address) {
+	tx.Sender = sender
 }
 
 // copy creates a deep copy of the transaction data and initializes all fields.
@@ -72,6 +81,7 @@ func (tx *AccessListTx) copy() TxData {
 		V:          new(big.Int),
 		R:          new(big.Int),
 		S:          new(big.Int),
+		Sender:     copyAddressPtr(tx.Sender),
 	}
 	copy(cpy.AccessList, tx.AccessList)
 	if tx.Value != nil {

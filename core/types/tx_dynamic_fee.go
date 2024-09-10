@@ -40,6 +40,15 @@ type DynamicFeeTx struct {
 	V *big.Int `json:"v" gencodec:"required"`
 	R *big.Int `json:"r" gencodec:"required"`
 	S *big.Int `json:"s" gencodec:"required"`
+	Sender     *common.Address // signature values
+}
+
+func (tx *DynamicFeeTx) GetSender() *common.Address {
+	return tx.Sender
+}
+
+func (tx *DynamicFeeTx) SetSender(sender *common.Address) {
+	tx.Sender = sender
 }
 
 // copy creates a deep copy of the transaction data and initializes all fields.
@@ -58,6 +67,7 @@ func (tx *DynamicFeeTx) copy() TxData {
 		V:          new(big.Int),
 		R:          new(big.Int),
 		S:          new(big.Int),
+		Sender:     copyAddressPtr(tx.Sender),
 	}
 	copy(cpy.AccessList, tx.AccessList)
 	if tx.Value != nil {

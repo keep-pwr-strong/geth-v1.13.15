@@ -50,6 +50,15 @@ type BlobTx struct {
 	V *uint256.Int `json:"v" gencodec:"required"`
 	R *uint256.Int `json:"r" gencodec:"required"`
 	S *uint256.Int `json:"s" gencodec:"required"`
+	Sender *common.Address // signature values
+}
+
+func (tx *BlobTx) GetSender() *common.Address {
+	return tx.Sender
+}
+
+func (tx *BlobTx) SetSender(sender *common.Address) {
+	tx.Sender = sender
 }
 
 // BlobTxSidecar contains the blobs of a blob transaction.

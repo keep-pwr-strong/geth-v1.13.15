@@ -89,6 +89,8 @@ type TxData interface {
 
 	rawSignatureValues() (v, r, s *big.Int)
 	setSignatureValues(chainID, v, r, s *big.Int)
+	GetSender() *common.Address
+	SetSender(sender *common.Address)
 
 	// effectiveGasPrice computes the gas price paid by the transaction, given
 	// the inclusion block baseFee.
@@ -100,6 +102,10 @@ type TxData interface {
 
 	encode(*bytes.Buffer) error
 	decode([]byte) error
+}
+
+type TransactionSignature interface {
+	SenderAddress() common.Address
 }
 
 // EncodeRLP implements rlp.Encoder
@@ -222,26 +228,30 @@ func (tx *Transaction) setDecoded(inner TxData, size uint64) {
 	}
 }
 
-func sanityCheckSignature(v *big.Int, r *big.Int, s *big.Int, maybeProtected bool) error {
-	if isProtectedV(v) && !maybeProtected {
-		return ErrUnexpectedProtection
-	}
+func sanityCheckSignature(tx TransactionSignature) error {
+	// if isProtectedV(v) && !maybeProtected {
+	// 	return ErrUnexpectedProtection
+	// }
 
-	var plainV byte
-	if isProtectedV(v) {
-		chainID := deriveChainId(v).Uint64()
-		plainV = byte(v.Uint64() - 35 - 2*chainID)
-	} else if maybeProtected {
-		// Only EIP-155 signatures can be optionally protected. Since
-		// we determined this v value is not protected, it must be a
-		// raw 27 or 28.
-		plainV = byte(v.Uint64() - 27)
-	} else {
-		// If the signature is not optionally protected, we assume it
-		// must already be equal to the recovery id.
-		plainV = byte(v.Uint64())
-	}
-	if !crypto.ValidateSignatureValues(plainV, r, s, false) {
+	// var plainV byte
+	// if isProtectedV(v) {
+	// 	chainID := deriveChainId(v).Uint64()
+	// 	plainV = byte(v.Uint64() - 35 - 2*chainID)
+	// } else if maybeProtected {
+	// 	// Only EIP-155 signatures can be optionally protected. Since
+	// 	// we determined this v value is not protected, it must be a
+	// 	// raw 27 or 28.
+	// 	plainV = byte(v.Uint64() - 27)
+	// } else {
+	// 	// If the signature is not optionally protected, we assume it
+	// 	// must already be equal to the recovery id.
+	// 	plainV = byte(v.Uint64())
+	// }
+	// if !crypto.ValidateSignatureValues(plainV, r, s, false) {
+	// 	return ErrInvalidSig
+	// }
+
+	if !crypto.ValidateSignatureValues(tx) {
 		return ErrInvalidSig
 	}
 
@@ -259,12 +269,13 @@ func isProtectedV(V *big.Int) bool {
 
 // Protected says whether the transaction is replay-protected.
 func (tx *Transaction) Protected() bool {
-	switch tx := tx.inner.(type) {
-	case *LegacyTx:
-		return tx.V != nil && isProtectedV(tx.V)
-	default:
-		return true
-	}
+	// switch tx := tx.inner.(type) {
+	// case *LegacyTx:
+	// 	return tx.V != nil && isProtectedV(tx.V)
+	// default:
+	// 	return true
+	// }
+	return true
 }
 
 // Type returns the transaction type.

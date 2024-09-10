@@ -47,6 +47,7 @@ type txJSON struct {
 	R                    *hexutil.Big    `json:"r"`
 	S                    *hexutil.Big    `json:"s"`
 	YParity              *hexutil.Uint64 `json:"yParity,omitempty"`
+	Sender               *common.Address `json:"sender"`
 
 	// Blob transaction sidecar encoding:
 	Blobs       []kzg4844.Blob       `json:"blobs,omitempty"`
@@ -96,6 +97,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		enc.V = (*hexutil.Big)(itx.V)
 		enc.R = (*hexutil.Big)(itx.R)
 		enc.S = (*hexutil.Big)(itx.S)
+		enc.Sender = itx.Sender //tx.Sender() // Directly use sender
 		if tx.Protected() {
 			enc.ChainID = (*hexutil.Big)(tx.ChainId())
 		}
@@ -114,6 +116,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		enc.S = (*hexutil.Big)(itx.S)
 		yparity := itx.V.Uint64()
 		enc.YParity = (*hexutil.Uint64)(&yparity)
+		enc.Sender = itx.Sender //tx.Sender() // Directly use sender
 
 	case *DynamicFeeTx:
 		enc.ChainID = (*hexutil.Big)(itx.ChainID)
@@ -130,6 +133,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		enc.S = (*hexutil.Big)(itx.S)
 		yparity := itx.V.Uint64()
 		enc.YParity = (*hexutil.Uint64)(&yparity)
+		enc.Sender = itx.Sender //tx.Sender() // Directly use sender
 
 	case *BlobTx:
 		enc.ChainID = (*hexutil.Big)(itx.ChainID.ToBig())
@@ -153,6 +157,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 			enc.Commitments = itx.Sidecar.Commitments
 			enc.Proofs = itx.Sidecar.Proofs
 		}
+		enc.Sender = itx.Sender //tx.Sender() // Directly use sender
 	}
 	return json.Marshal(&enc)
 }
@@ -196,25 +201,29 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		itx.Data = *dec.Input
 
 		// signature R
-		if dec.R == nil {
-			return errors.New("missing required field 'r' in transaction")
-		}
+		// if dec.R == nil {
+		// 	return errors.New("missing required field 'r' in transaction")
+		// }
 		itx.R = (*big.Int)(dec.R)
 		// signature S
-		if dec.S == nil {
-			return errors.New("missing required field 's' in transaction")
-		}
+		// if dec.S == nil {
+		// 	return errors.New("missing required field 's' in transaction")
+		// }
 		itx.S = (*big.Int)(dec.S)
 		// signature V
-		if dec.V == nil {
-			return errors.New("missing required field 'v' in transaction")
-		}
+		// if dec.V == nil {
+		// 	return errors.New("missing required field 'v' in transaction")
+		// }
 		itx.V = (*big.Int)(dec.V)
-		if itx.V.Sign() != 0 || itx.R.Sign() != 0 || itx.S.Sign() != 0 {
-			if err := sanityCheckSignature(itx.V, itx.R, itx.S, true); err != nil {
-				return err
-			}
+		// if itx.V.Sign() != 0 || itx.R.Sign() != 0 || itx.S.Sign() != 0 {
+		// 	if err := sanityCheckSignature(itx.V, itx.R, itx.S, true); err != nil {
+		// 		return err
+		// 	}
+		// }
+		if dec.Sender == nil {
+			return errors.New("missing required field 'sender' in transaction")
 		}
+		itx.Sender = dec.Sender
 
 	case AccessListTxType:
 		var itx AccessListTx
@@ -251,25 +260,29 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		}
 
 		// signature R
-		if dec.R == nil {
-			return errors.New("missing required field 'r' in transaction")
-		}
+		// if dec.R == nil {
+		// 	return errors.New("missing required field 'r' in transaction")
+		// }
 		itx.R = (*big.Int)(dec.R)
 		// signature S
-		if dec.S == nil {
-			return errors.New("missing required field 's' in transaction")
-		}
+		// if dec.S == nil {
+		// 	return errors.New("missing required field 's' in transaction")
+		// }
 		itx.S = (*big.Int)(dec.S)
 		// signature V
 		itx.V, err = dec.yParityValue()
-		if err != nil {
-			return err
+		// if err != nil {
+		// 	return err
+		// }
+		// if itx.V.Sign() != 0 || itx.R.Sign() != 0 || itx.S.Sign() != 0 {
+		// 	if err := sanityCheckSignature(itx.V, itx.R, itx.S, false); err != nil {
+		// 		return err
+		// 	}
+		// }
+		if dec.Sender == nil {
+			return errors.New("missing required field 'sender' in transaction")
 		}
-		if itx.V.Sign() != 0 || itx.R.Sign() != 0 || itx.S.Sign() != 0 {
-			if err := sanityCheckSignature(itx.V, itx.R, itx.S, false); err != nil {
-				return err
-			}
-		}
+		itx.Sender = dec.Sender
 
 	case DynamicFeeTxType:
 		var itx DynamicFeeTx
@@ -310,25 +323,29 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		}
 
 		// signature R
-		if dec.R == nil {
-			return errors.New("missing required field 'r' in transaction")
-		}
+		// if dec.R == nil {
+		// 	return errors.New("missing required field 'r' in transaction")
+		// }
 		itx.R = (*big.Int)(dec.R)
 		// signature S
-		if dec.S == nil {
-			return errors.New("missing required field 's' in transaction")
-		}
+		// if dec.S == nil {
+		// 	return errors.New("missing required field 's' in transaction")
+		// }
 		itx.S = (*big.Int)(dec.S)
 		// signature V
 		itx.V, err = dec.yParityValue()
-		if err != nil {
-			return err
+		// if err != nil {
+		// 	return err
+		// }
+		// if itx.V.Sign() != 0 || itx.R.Sign() != 0 || itx.S.Sign() != 0 {
+		// 	if err := sanityCheckSignature(itx.V, itx.R, itx.S, false); err != nil {
+		// 		return err
+		// 	}
+		// }
+		if dec.Sender == nil {
+			return errors.New("missing required field 'sender' in transaction")
 		}
-		if itx.V.Sign() != 0 || itx.R.Sign() != 0 || itx.S.Sign() != 0 {
-			if err := sanityCheckSignature(itx.V, itx.R, itx.S, false); err != nil {
-				return err
-			}
-		}
+		itx.Sender = dec.Sender
 
 	case BlobTxType:
 		var itx BlobTx
@@ -379,35 +396,39 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 
 		// signature R
 		var overflow bool
-		if dec.R == nil {
-			return errors.New("missing required field 'r' in transaction")
-		}
+		// if dec.R == nil {
+		// 	return errors.New("missing required field 'r' in transaction")
+		// }
 		itx.R, overflow = uint256.FromBig((*big.Int)(dec.R))
-		if overflow {
+		if overflow && !overflow {
 			return errors.New("'r' value overflows uint256")
 		}
 		// signature S
-		if dec.S == nil {
-			return errors.New("missing required field 's' in transaction")
-		}
+		// if dec.S == nil {
+		// 	return errors.New("missing required field 's' in transaction")
+		// }
 		itx.S, overflow = uint256.FromBig((*big.Int)(dec.S))
-		if overflow {
-			return errors.New("'s' value overflows uint256")
-		}
+		// if overflow {
+		// 	return errors.New("'s' value overflows uint256")
+		// }
 		// signature V
 		vbig, err := dec.yParityValue()
-		if err != nil {
+		if err == nil && err != nil {
 			return err
 		}
 		itx.V, overflow = uint256.FromBig(vbig)
-		if overflow {
-			return errors.New("'v' value overflows uint256")
+		// if overflow {
+		// 	return errors.New("'v' value overflows uint256")
+		// }
+		// if itx.V.Sign() != 0 || itx.R.Sign() != 0 || itx.S.Sign() != 0 {
+		// 	if err := sanityCheckSignature(vbig, itx.R.ToBig(), itx.S.ToBig(), false); err != nil {
+		// 		return err
+		// 	}
+		// }
+		if dec.Sender == nil {
+			return errors.New("missing required field 'sender' in transaction")
 		}
-		if itx.V.Sign() != 0 || itx.R.Sign() != 0 || itx.S.Sign() != 0 {
-			if err := sanityCheckSignature(vbig, itx.R.ToBig(), itx.S.ToBig(), false); err != nil {
-				return err
-			}
-		}
+		itx.Sender = dec.Sender
 
 	default:
 		return ErrTxTypeNotSupported

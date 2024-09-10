@@ -134,22 +134,26 @@ func MustSignNewTx(prv *ecdsa.PrivateKey, s Signer, txdata TxData) *Transaction 
 // signing method. The cache is invalidated if the cached signer does
 // not match the signer used in the current call.
 func Sender(signer Signer, tx *Transaction) (common.Address, error) {
-	if sc := tx.from.Load(); sc != nil {
-		sigCache := sc.(sigCache)
-		// If the signer used to derive from in a previous
-		// call is not the same as used current, invalidate
-		// the cache.
-		if sigCache.signer.Equal(signer) {
-			return sigCache.from, nil
-		}
-	}
+	// if sc := tx.from.Load(); sc != nil {
+	// 	sigCache := sc.(sigCache)
+	// 	// If the signer used to derive from in a previous
+	// 	// call is not the same as used current, invalidate
+	// 	// the cache.
+	// 	if sigCache.signer.Equal(signer) {
+	// 		return sigCache.from, nil
+	// 	}
+	// }
 
-	addr, err := signer.Sender(tx)
-	if err != nil {
-		return common.Address{}, err
+	// addr, err := signer.Sender(tx)
+	// if err != nil {
+	// 	return common.Address{}, err
+	// }
+	// tx.from.Store(sigCache{signer: signer, from: addr})
+	// return addr, nil
+	if tx.inner != nil && tx.inner.GetSender() != nil {
+		return *tx.inner.GetSender(), nil
 	}
-	tx.from.Store(sigCache{signer: signer, from: addr})
-	return addr, nil
+	return common.Address{}, errors.New("invalid sender address")
 }
 
 // Signer encapsulates transaction signature handling. The name of this type is slightly
@@ -195,8 +199,15 @@ func (s cancunSigner) Sender(tx *Transaction) (common.Address, error) {
 	// Blob txs are defined to use 0 and 1 as their recovery
 	// id, add 27 to become equivalent to unprotected Homestead signatures.
 	V = new(big.Int).Add(V, big.NewInt(27))
-	if tx.ChainId().Cmp(s.chainId) != 0 {
-		return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
+	// if tx.ChainId().Cmp(s.chainId) != 0 {
+	// 	return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
+	// }
+	if tx.inner != nil && tx.inner.GetSender() != nil {
+		sender := *tx.inner.GetSender()
+		if tx.ChainId().Cmp(s.chainId) != 0 {
+			return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
+		}
+		return sender, nil
 	}
 	return recoverPlain(s.Hash(tx), R, S, V, true)
 }
@@ -263,8 +274,15 @@ func (s londonSigner) Sender(tx *Transaction) (common.Address, error) {
 	// DynamicFee txs are defined to use 0 and 1 as their recovery
 	// id, add 27 to become equivalent to unprotected Homestead signatures.
 	V = new(big.Int).Add(V, big.NewInt(27))
-	if tx.ChainId().Cmp(s.chainId) != 0 {
-		return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
+	// if tx.ChainId().Cmp(s.chainId) != 0 {
+	// 	return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
+	// }
+	if tx.inner != nil && tx.inner.GetSender() != nil {
+		sender := *tx.inner.GetSender()
+		if tx.ChainId().Cmp(s.chainId) != 0 {
+			return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
+		}
+		return sender, nil
 	}
 	return recoverPlain(s.Hash(tx), R, S, V, true)
 }
@@ -328,21 +346,34 @@ func (s eip2930Signer) Equal(s2 Signer) bool {
 }
 
 func (s eip2930Signer) Sender(tx *Transaction) (common.Address, error) {
-	V, R, S := tx.RawSignatureValues()
+	// V, R, S := tx.RawSignatureValues()
+	// switch tx.Type() {
+	// case LegacyTxType:
+	// 	return s.EIP155Signer.Sender(tx)
+	// case AccessListTxType:
+	// 	// AL txs are defined to use 0 and 1 as their recovery
+	// 	// id, add 27 to become equivalent to unprotected Homestead signatures.
+	// 	V = new(big.Int).Add(V, big.NewInt(27))
+	// default:
+	// 	return common.Address{}, ErrTxTypeNotSupported
+	// }
+	// if tx.ChainId().Cmp(s.chainId) != 0 {
+	// 	return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
+	// }
 	switch tx.Type() {
-	case LegacyTxType:
-		return s.EIP155Signer.Sender(tx)
-	case AccessListTxType:
-		// AL txs are defined to use 0 and 1 as their recovery
-		// id, add 27 to become equivalent to unprotected Homestead signatures.
-		V = new(big.Int).Add(V, big.NewInt(27))
+	case LegacyTxType, AccessListTxType:
+		if tx.inner != nil && tx.inner.GetSender() != nil {
+			// Ensure the sender address is valid and matches the expected chain ID if needed
+			if tx.ChainId().Cmp(s.chainId) != 0 {
+				return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
+			}
+			return *tx.inner.GetSender(), nil
+		}
+		return common.Address{}, errors.New("sender information not available")
 	default:
 		return common.Address{}, ErrTxTypeNotSupported
 	}
-	if tx.ChainId().Cmp(s.chainId) != 0 {
-		return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
-	}
-	return recoverPlain(s.Hash(tx), R, S, V, true)
+	// return recoverPlain(s.Hash(tx), R, S, V, true)
 }
 
 func (s eip2930Signer) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big.Int, err error) {
@@ -485,6 +516,9 @@ func (hs HomesteadSigner) Sender(tx *Transaction) (common.Address, error) {
 	if tx.Type() != LegacyTxType {
 		return common.Address{}, ErrTxTypeNotSupported
 	}
+	if tx.inner != nil && tx.inner.GetSender() != nil {
+		return *tx.inner.GetSender(), nil
+	}
 	v, r, s := tx.RawSignatureValues()
 	return recoverPlain(hs.Hash(tx), r, s, v, true)
 }
@@ -505,6 +539,9 @@ func (s FrontierSigner) Equal(s2 Signer) bool {
 func (fs FrontierSigner) Sender(tx *Transaction) (common.Address, error) {
 	if tx.Type() != LegacyTxType {
 		return common.Address{}, ErrTxTypeNotSupported
+	}
+	if tx.inner != nil && tx.inner.GetSender() != nil {
+		return *tx.inner.GetSender(), nil
 	}
 	v, r, s := tx.RawSignatureValues()
 	return recoverPlain(fs.Hash(tx), r, s, v, false)
@@ -548,9 +585,9 @@ func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (commo
 		return common.Address{}, ErrInvalidSig
 	}
 	V := byte(Vb.Uint64() - 27)
-	if !crypto.ValidateSignatureValues(V, R, S, homestead) {
-		return common.Address{}, ErrInvalidSig
-	}
+	// if !crypto.ValidateSignatureValues(V, R, S, homestead) {
+	// 	return common.Address{}, ErrInvalidSig
+	// }
 	// encode the signature in uncompressed format
 	r, s := R.Bytes(), S.Bytes()
 	sig := make([]byte, crypto.SignatureLength)

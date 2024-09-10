@@ -32,6 +32,16 @@ type LegacyTx struct {
 	Value    *big.Int        // wei amount
 	Data     []byte          // contract invocation input data
 	V, R, S  *big.Int        // signature values
+	Sender   *common.Address // signature values
+	ChainID  *big.Int        // explicitly store chain ID
+}
+
+func (tx *LegacyTx) GetSender() *common.Address {
+	return tx.Sender
+}
+
+func (tx *LegacyTx) SetSender(sender *common.Address) {
+	tx.Sender = sender
 }
 
 // NewTransaction creates an unsigned legacy transaction.
@@ -93,7 +103,10 @@ func (tx *LegacyTx) copy() TxData {
 
 // accessors for innerTx.
 func (tx *LegacyTx) txType() byte           { return LegacyTxType }
-func (tx *LegacyTx) chainID() *big.Int      { return deriveChainId(tx.V) }
+// func (tx *LegacyTx) chainID() *big.Int      { return deriveChainId(tx.V) }
+func (tx *LegacyTx) chainID() *big.Int {
+	return tx.ChainID
+}
 func (tx *LegacyTx) accessList() AccessList { return nil }
 func (tx *LegacyTx) data() []byte           { return tx.Data }
 func (tx *LegacyTx) gas() uint64            { return tx.Gas }

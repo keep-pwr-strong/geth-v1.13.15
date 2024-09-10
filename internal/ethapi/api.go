@@ -1325,17 +1325,34 @@ type RPCTransaction struct {
 	R                   *hexutil.Big      `json:"r"`
 	S                   *hexutil.Big      `json:"s"`
 	YParity             *hexutil.Uint64   `json:"yParity,omitempty"`
+	Sender              common.Address    `json:"sender"`
+}
+
+type EnhancedTransaction struct {
+	*types.Transaction
+	Sender common.Address
+}
+
+func NewEnhancedTransaction(tx *types.Transaction, signer types.Signer) (*EnhancedTransaction, error) {
+	from, err := types.Sender(signer, tx)
+	if err != nil {
+		return nil, err
+	}
+	return &EnhancedTransaction{
+		Transaction: tx,
+		Sender:      from,
+	}, nil
 }
 
 // newRPCTransaction returns a transaction that will serialize to the RPC
 // representation, with the given location metadata set (if available).
-func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber uint64, blockTime uint64, index uint64, baseFee *big.Int, config *params.ChainConfig) *RPCTransaction {
-	signer := types.MakeSigner(config, new(big.Int).SetUint64(blockNumber), blockTime)
-	from, _ := types.Sender(signer, tx)
+func newRPCTransaction(tx *EnhancedTransaction, blockHash common.Hash, blockNumber uint64, blockTime uint64, index uint64, baseFee *big.Int, config *params.ChainConfig) *RPCTransaction {
+	// signer := types.MakeSigner(config, new(big.Int).SetUint64(blockNumber), blockTime)
+	// from, _ := types.Sender(signer, tx)
 	v, r, s := tx.RawSignatureValues()
 	result := &RPCTransaction{
 		Type:     hexutil.Uint64(tx.Type()),
-		From:     from,
+		From:     tx.Sender,
 		Gas:      hexutil.Uint64(tx.Gas()),
 		GasPrice: (*hexutil.Big)(tx.GasPrice()),
 		Hash:     tx.Hash(),
@@ -1346,6 +1363,7 @@ func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber
 		V:        (*hexutil.Big)(v),
 		R:        (*hexutil.Big)(r),
 		S:        (*hexutil.Big)(s),
+		Sender:   tx.Sender,
 	}
 	if blockHash != (common.Hash{}) {
 		result.BlockHash = &blockHash
@@ -1378,7 +1396,7 @@ func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber
 		// if the transaction has been mined, compute the effective gas price
 		if baseFee != nil && blockHash != (common.Hash{}) {
 			// price = min(gasTipCap + baseFee, gasFeeCap)
-			result.GasPrice = (*hexutil.Big)(effectiveGasPrice(tx, baseFee))
+			result.GasPrice = (*hexutil.Big)(effectiveGasPrice(tx.Transaction, baseFee))
 		} else {
 			result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
 		}
@@ -1393,7 +1411,7 @@ func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber
 		result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
 		// if the transaction has been mined, compute the effective gas price
 		if baseFee != nil && blockHash != (common.Hash{}) {
-			result.GasPrice = (*hexutil.Big)(effectiveGasPrice(tx, baseFee))
+			result.GasPrice = (*hexutil.Big)(effectiveGasPrice(tx.Transaction, baseFee))
 		} else {
 			result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
 		}
@@ -1427,7 +1445,13 @@ func NewRPCPendingTransaction(tx *types.Transaction, current *types.Header, conf
 		blockNumber = current.Number.Uint64()
 		blockTime = current.Time
 	}
-	return newRPCTransaction(tx, common.Hash{}, blockNumber, blockTime, 0, baseFee, config)
+	signer := types.MakeSigner(config, new(big.Int).SetUint64(blockNumber), blockTime)
+	etx, err := NewEnhancedTransaction(tx, signer)
+	if err != nil {
+		log.Info("Failed to create EnhancedTransaction: %v", err)
+		return nil
+	}
+	return newRPCTransaction(etx, common.Hash{}, blockNumber, blockTime, 0, baseFee, config)
 }
 
 // newRPCTransactionFromBlockIndex returns a transaction that will serialize to the RPC representation.
@@ -1436,7 +1460,13 @@ func newRPCTransactionFromBlockIndex(b *types.Block, index uint64, config *param
 	if index >= uint64(len(txs)) {
 		return nil
 	}
-	return newRPCTransaction(txs[index], b.Hash(), b.NumberU64(), b.Time(), index, b.BaseFee(), config)
+	signer := types.MakeSigner(config, new(big.Int).SetUint64(b.NumberU64()), b.Time())
+	etx, err := NewEnhancedTransaction(txs[index], signer)
+	if err != nil {
+		log.Info("Failed to create EnhancedTransaction: %v", err)
+		return nil
+	}
+	return newRPCTransaction(etx, b.Hash(), b.NumberU64(), b.Time(), index, b.BaseFee(), config)
 }
 
 // newRPCRawTransactionFromBlockIndex returns the bytes of a transaction given a block and a transaction index.
@@ -1636,7 +1666,12 @@ func (s *TransactionAPI) GetTransactionByHash(ctx context.Context, hash common.H
 	if err != nil {
 		return nil, err
 	}
-	return newRPCTransaction(tx, blockHash, blockNumber, header.Time, index, header.BaseFee, s.b.ChainConfig()), nil
+	signer := types.MakeSigner(s.b.ChainConfig(), header.Number, header.Time)
+	etx, err := NewEnhancedTransaction(tx, signer)
+	if err != nil {
+		return nil, err
+	}
+	return newRPCTransaction(etx, blockHash, blockNumber, header.Time, index, header.BaseFee, s.b.ChainConfig()), nil
 }
 
 // GetRawTransactionByHash returns the bytes of the transaction for the given hash.
@@ -1772,12 +1807,12 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 // transaction pool.
 func (s *TransactionAPI) SendTransaction(ctx context.Context, args TransactionArgs) (common.Hash, error) {
 	// Look up the wallet containing the requested signer
-	account := accounts.Account{Address: args.from()}
+	// account := accounts.Account{Address: args.from()}
 
-	wallet, err := s.b.AccountManager().Find(account)
-	if err != nil {
-		return common.Hash{}, err
-	}
+	// wallet, err := s.b.AccountManager().Find(account)
+	// if err != nil {
+	// 	return common.Hash{}, err
+	// }
 
 	if args.Nonce == nil {
 		// Hold the mutex around signing to prevent concurrent assignment of
@@ -1796,11 +1831,11 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args TransactionAr
 	// Assemble the transaction and sign with the wallet
 	tx := args.toTransaction()
 
-	signed, err := wallet.SignTx(account, tx, s.b.ChainConfig().ChainID)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return SubmitTransaction(ctx, s.b, signed)
+	// signed, err := wallet.SignTx(account, tx, s.b.ChainConfig().ChainID)
+	// if err != nil {
+	// 	return common.Hash{}, err
+	// }
+	return SubmitTransaction(ctx, s.b, tx)
 }
 
 // FillTransaction fills the defaults (nonce, gas, gasPrice or 1559 fields)
