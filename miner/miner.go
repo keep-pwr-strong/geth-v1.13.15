@@ -173,6 +173,21 @@ func (miner *Miner) Stop() {
 	miner.stopCh <- struct{}{}
 }
 
+func (miner *Miner) TriggerBlock() (common.Hash, error) {
+	if miner.worker == nil {
+        return common.Hash{}, fmt.Errorf("worker not initialized")
+    }
+	timestamp := time.Now()
+
+    miner.worker.commitWork(nil, int64(timestamp.Compare(timestamp)))
+
+	// time.Sleep(2 * time.Second)
+
+    block := miner.eth.BlockChain().CurrentBlock()
+	log.Info("Manual block created", "hash", block.Hash(), "timestamp", int64(block.Time))
+    return block.Hash(), nil
+}
+
 func (miner *Miner) Close() {
 	close(miner.exitCh)
 	miner.wg.Wait()

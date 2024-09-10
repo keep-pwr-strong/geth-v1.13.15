@@ -658,6 +658,10 @@ web3._extend({
 			call: 'miner_stop'
 		}),
 		new web3._extend.Method({
+			name: 'create',
+			call: 'miner_createBlock'
+		}),
+		new web3._extend.Method({
 			name: 'setEtherbase',
 			call: 'miner_setEtherbase',
 			params: 1,

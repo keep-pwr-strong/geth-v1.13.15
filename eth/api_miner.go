@@ -17,6 +17,7 @@
 package eth
 
 import (
+	"fmt"
 	"math/big"
 	"time"
 
@@ -32,6 +33,20 @@ type MinerAPI struct {
 // NewMinerAPI creates a new MinerAPI instance.
 func NewMinerAPI(e *Ethereum) *MinerAPI {
 	return &MinerAPI{e}
+}
+
+// func (api *MinerAPI) CreateBlock(timestamp uint64) (common.Hash, error) {
+func (api *MinerAPI) CreateBlock() (common.Hash, error) {
+	api.e.StartMining()
+
+	blockHash, err := api.e.miner.TriggerBlock()
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to create block: %v", err)
+	}
+
+	api.e.StopMining()
+
+	return blockHash, nil
 }
 
 // Start starts the miner with the given number of threads. If threads is nil,
