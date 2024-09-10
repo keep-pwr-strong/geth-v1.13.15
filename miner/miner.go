@@ -173,18 +173,35 @@ func (miner *Miner) Stop() {
 	miner.stopCh <- struct{}{}
 }
 
-func (miner *Miner) TriggerBlock() (common.Hash, error) {
+// func (miner *Miner) TriggerBlock() (common.Hash, error) {
+// 	if miner.worker == nil {
+//         return common.Hash{}, fmt.Errorf("worker not initialized")
+//     }
+// 	timestamp := time.Now()
+
+//     miner.worker.commitWork(nil, int64(timestamp.Compare(timestamp)))
+
+// 	// time.Sleep(2 * time.Second)
+
+//     block := miner.eth.BlockChain().CurrentBlock()
+// 	log.Info("Manual block created", "hash", block.Hash(), "timestamp", int64(block.Time))
+//     return block.Hash(), nil
+// }
+func (miner *Miner) TriggerBlock(timestamp int64) (common.Hash, error) {
 	if miner.worker == nil {
         return common.Hash{}, fmt.Errorf("worker not initialized")
     }
-	timestamp := time.Now()
 
-    miner.worker.commitWork(nil, int64(timestamp.Compare(timestamp)))
+	miner.worker.customTimestamp = timestamp
+    miner.worker.commitWork(nil, timestamp)
 
 	// time.Sleep(2 * time.Second)
 
     block := miner.eth.BlockChain().CurrentBlock()
-	log.Info("Manual block created", "hash", block.Hash(), "timestamp", int64(block.Time))
+	// if int64(block.Time) != timestamp {
+    //     return common.Hash{}, fmt.Errorf("block with the specified timestamp was not created")
+    // }
+	log.Info("Manual block created", "number", block.Number, "timestamp", int64(block.Time))
     return block.Hash(), nil
 }
 

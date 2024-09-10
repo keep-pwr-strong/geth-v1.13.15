@@ -240,6 +240,8 @@ type worker struct {
 	skipSealHook func(*task) bool                   // Method to decide whether skipping the sealing.
 	fullTaskHook func()                             // Method to call before pushing the full sealing task.
 	resubmitHook func(time.Duration, time.Duration) // Method to call upon updating resubmitting interval.
+
+	customTimestamp int64
 }
 
 func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, isLocalBlock func(header *types.Header) bool, init bool) *worker {
@@ -432,11 +434,15 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 	<-timer.C // discard the initial tick
 
 	// commit aborts in-flight transaction execution with given signal and resubmits a new one.
-	commit := func(s int32) {
+	commit := func(s int32, customTimestamp int64) {
 		if interrupt != nil {
 			interrupt.Store(s)
 		}
 		interrupt = new(atomic.Int32)
+
+        // Use the custom timestamp provided
+   		timestamp = customTimestamp
+
 		select {
 		case w.newWorkCh <- &newWorkReq{interrupt: interrupt, timestamp: timestamp}:
 		case <-w.exitCh:
@@ -460,13 +466,11 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		select {
 		case <-w.startCh:
 			clearPending(w.chain.CurrentBlock().Number.Uint64())
-			timestamp = time.Now().Unix()
-			commit(commitInterruptNewHead)
+			commit(commitInterruptNewHead, w.customTimestamp)
 
 		case head := <-w.chainHeadCh:
 			clearPending(head.Block.NumberU64())
-			timestamp = time.Now().Unix()
-			commit(commitInterruptNewHead)
+			commit(commitInterruptNewHead, w.customTimestamp)
 
 		case <-timer.C:
 			// If sealing is running resubmit a new work cycle periodically to pull in
@@ -477,7 +481,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 					timer.Reset(recommit)
 					continue
 				}
-				commit(commitInterruptResubmit)
+				commit(commitInterruptResubmit, w.customTimestamp)
 			}
 
 		case interval := <-w.resubmitIntervalCh:
@@ -960,6 +964,17 @@ func (w *worker) prepareWork(genParams *generateParams) (*environment, error) {
 		}
 		timestamp = parent.Time + 1
 	}
+	// STOP FUCKING IT
+	// var timestamp uint64
+	// if genParams.forceTime {
+	// 	timestamp = genParams.timestamp
+	// } else {
+	// 	timestamp = genParams.timestamp
+	// 	if parent.Time >= timestamp {
+	// 		timestamp = parent.Time + 1
+	// 	}
+	// }
+
 	// Construct the sealing block header.
 	header := &types.Header{
 		ParentHash: parent.Hash(),
@@ -968,6 +983,7 @@ func (w *worker) prepareWork(genParams *generateParams) (*environment, error) {
 		Time:       timestamp,
 		Coinbase:   genParams.coinbase,
 	}
+	header.Time = uint64(timestamp)
 	// Set the extra field.
 	if len(w.extra) != 0 {
 		header.Extra = w.extra
@@ -1015,6 +1031,7 @@ func (w *worker) prepareWork(genParams *generateParams) (*environment, error) {
 		vmenv := vm.NewEVM(context, vm.TxContext{}, env.state, w.chainConfig, vm.Config{})
 		core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, vmenv, env.state)
 	}
+	env.header.Time = timestamp
 	return env, nil
 }
 
@@ -1114,7 +1131,7 @@ func (w *worker) commitWork(interrupt *atomic.Int32, timestamp int64) {
 	if w.syncing.Load() {
 		return
 	}
-	start := time.Now()
+	start := time.Unix(timestamp, 0)
 
 	// Set the coinbase if the worker is running or it's required
 	var coinbase common.Address
@@ -1128,6 +1145,7 @@ func (w *worker) commitWork(interrupt *atomic.Int32, timestamp int64) {
 	work, err := w.prepareWork(&generateParams{
 		timestamp: uint64(timestamp),
 		coinbase:  coinbase,
+		forceTime: true,
 	})
 	if err != nil {
 		return
@@ -1191,8 +1209,9 @@ func (w *worker) commit(env *environment, interval func(), update bool, start ti
 		}
 		// If we're post merge, just ignore
 		if !w.isTTDReached(block.Header()) {
+			createdAt := time.Unix(start.Unix(), 0) // Custom timestamp			
 			select {
-			case w.taskCh <- &task{receipts: env.receipts, state: env.state, block: block, createdAt: time.Now()}:
+			case w.taskCh <- &task{receipts: env.receipts, state: env.state, block: block, createdAt: createdAt}:
 				fees := totalFees(block, env.receipts)
 				feesInEther := new(big.Float).Quo(new(big.Float).SetInt(fees), big.NewFloat(params.Ether))
 				log.Info("Commit new sealing work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),

@@ -35,11 +35,11 @@ func NewMinerAPI(e *Ethereum) *MinerAPI {
 	return &MinerAPI{e}
 }
 
-// func (api *MinerAPI) CreateBlock(timestamp uint64) (common.Hash, error) {
-func (api *MinerAPI) CreateBlock() (common.Hash, error) {
+// func (api *MinerAPI) CreateBlock() (common.Hash, error) {
+func (api *MinerAPI) CreateBlock(timestamp int64) (common.Hash, error) {
 	api.e.StartMining()
 
-	blockHash, err := api.e.miner.TriggerBlock()
+	blockHash, err := api.e.miner.TriggerBlock(timestamp)
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("failed to create block: %v", err)
 	}
