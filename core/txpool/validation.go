@@ -97,45 +97,45 @@ func ValidateTransaction(tx *types.Transaction, head *types.Header, signer types
 		return core.ErrTipAboveFeeCap
 	}
 	// Make sure the transaction is signed properly
-	if _, err := types.Sender(signer, tx); err != nil {
-		return ErrInvalidSender
-	}
+	// if _, err := types.Sender(signer, tx); err != nil {
+	// 	return ErrInvalidSender
+	// }
 	// Ensure the transaction has more gas than the bare minimum needed to cover
 	// the transaction metadata
-	intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, true, opts.Config.IsIstanbul(head.Number), opts.Config.IsShanghai(head.Number, head.Time))
-	if err != nil {
-		return err
-	}
-	if tx.Gas() < intrGas {
-		return fmt.Errorf("%w: gas %v, minimum needed %v", core.ErrIntrinsicGas, tx.Gas(), intrGas)
-	}
-	// Ensure the gasprice is high enough to cover the requirement of the calling pool
-	if tx.GasTipCapIntCmp(opts.MinTip) < 0 {
-		return fmt.Errorf("%w: gas tip cap %v, minimum needed %v", ErrUnderpriced, tx.GasTipCap(), opts.MinTip)
-	}
-	if tx.Type() == types.BlobTxType {
-		// Ensure the blob fee cap satisfies the minimum blob gas price
-		if tx.BlobGasFeeCapIntCmp(blobTxMinBlobGasPrice) < 0 {
-			return fmt.Errorf("%w: blob fee cap %v, minimum needed %v", ErrUnderpriced, tx.BlobGasFeeCap(), blobTxMinBlobGasPrice)
-		}
-		sidecar := tx.BlobTxSidecar()
-		if sidecar == nil {
-			return fmt.Errorf("missing sidecar in blob transaction")
-		}
-		// Ensure the number of items in the blob transaction and various side
-		// data match up before doing any expensive validations
-		hashes := tx.BlobHashes()
-		if len(hashes) == 0 {
-			return fmt.Errorf("blobless blob transaction")
-		}
-		if len(hashes) > params.MaxBlobGasPerBlock/params.BlobTxBlobGasPerBlob {
-			return fmt.Errorf("too many blobs in transaction: have %d, permitted %d", len(hashes), params.MaxBlobGasPerBlock/params.BlobTxBlobGasPerBlob)
-		}
-		// Ensure commitments, proofs and hashes are valid
-		if err := validateBlobSidecar(hashes, sidecar); err != nil {
-			return err
-		}
-	}
+	// intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, true, opts.Config.IsIstanbul(head.Number), opts.Config.IsShanghai(head.Number, head.Time))
+	// if err != nil {
+	// 	return err
+	// }
+	// if tx.Gas() < intrGas {
+	// 	return fmt.Errorf("%w: gas %v, minimum needed %v", core.ErrIntrinsicGas, tx.Gas(), intrGas)
+	// }
+	// // Ensure the gasprice is high enough to cover the requirement of the calling pool
+	// if tx.GasTipCapIntCmp(opts.MinTip) < 0 {
+	// 	return fmt.Errorf("%w: gas tip cap %v, minimum needed %v", ErrUnderpriced, tx.GasTipCap(), opts.MinTip)
+	// }
+	// if tx.Type() == types.BlobTxType {
+	// 	// Ensure the blob fee cap satisfies the minimum blob gas price
+	// 	if tx.BlobGasFeeCapIntCmp(blobTxMinBlobGasPrice) < 0 {
+	// 		return fmt.Errorf("%w: blob fee cap %v, minimum needed %v", ErrUnderpriced, tx.BlobGasFeeCap(), blobTxMinBlobGasPrice)
+	// 	}
+	// 	sidecar := tx.BlobTxSidecar()
+	// 	if sidecar == nil {
+	// 		return fmt.Errorf("missing sidecar in blob transaction")
+	// 	}
+	// 	// Ensure the number of items in the blob transaction and various side
+	// 	// data match up before doing any expensive validations
+	// 	hashes := tx.BlobHashes()
+	// 	if len(hashes) == 0 {
+	// 		return fmt.Errorf("blobless blob transaction")
+	// 	}
+	// 	if len(hashes) > params.MaxBlobGasPerBlock/params.BlobTxBlobGasPerBlob {
+	// 		return fmt.Errorf("too many blobs in transaction: have %d, permitted %d", len(hashes), params.MaxBlobGasPerBlock/params.BlobTxBlobGasPerBlob)
+	// 	}
+	// 	// Ensure commitments, proofs and hashes are valid
+	// 	if err := validateBlobSidecar(hashes, sidecar); err != nil {
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
 
