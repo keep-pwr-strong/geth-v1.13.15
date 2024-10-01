@@ -148,7 +148,7 @@ var (
 		configFileFlag,
 		utils.LogDebugFlag,
 		utils.LogBacktraceAtFlag,
-		utils.CustomBaseFeeFlag,
+		utils.PwrBaseFeeFlag,
 	}, utils.NetworkFlags, utils.DatabaseFlags)
 
 	rpcFlags = []cli.Flag{
@@ -260,8 +260,8 @@ func init() {
 			return err
 		}
 		flags.CheckEnvVars(ctx, app.Flags, "GETH")
-		baseFeeMultiplier := ctx.Int64("pwrfee")
-		eip1559.PwrBaseFee = big.NewInt(baseFeeMultiplier)
+		baseFee := ctx.Int64("pwrfee")
+		eip1559.PwrBaseFee = big.NewInt(baseFee)
 		return nil
 	}
 	app.After = func(ctx *cli.Context) error {

@@ -132,7 +132,7 @@ var (
 		Usage:    "Prepends log messages with call-site location (deprecated)",
 		Category: flags.DeprecatedCategory,
 	}
-	CustomBaseFeeFlag = &cli.Uint64Flag{
+	PwrBaseFeeFlag = &cli.Uint64Flag{
 		Name:  "pwrfee",
 		Usage: "Custom base fee in wei to be used for EIP-1559 transactions",
 		Value: 1,
