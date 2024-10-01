@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"os"
 	"sort"
 	"strconv"
@@ -29,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/console/prompt"
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/eth/downloader"
@@ -146,6 +148,7 @@ var (
 		configFileFlag,
 		utils.LogDebugFlag,
 		utils.LogBacktraceAtFlag,
+		utils.CustomBaseFeeFlag,
 	}, utils.NetworkFlags, utils.DatabaseFlags)
 
 	rpcFlags = []cli.Flag{
@@ -257,6 +260,8 @@ func init() {
 			return err
 		}
 		flags.CheckEnvVars(ctx, app.Flags, "GETH")
+		baseFeeMultiplier := ctx.Int64("pwrfee")
+		eip1559.PwrBaseFee = big.NewInt(baseFeeMultiplier)
 		return nil
 	}
 	app.After = func(ctx *cli.Context) error {
