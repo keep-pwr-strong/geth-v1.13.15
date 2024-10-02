@@ -1807,12 +1807,12 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 // transaction pool.
 func (s *TransactionAPI) SendTransaction(ctx context.Context, args TransactionArgs) (common.Hash, error) {
 	// Look up the wallet containing the requested signer
-	// account := accounts.Account{Address: args.from()}
+	account := accounts.Account{Address: args.from()}
 
-	// wallet, err := s.b.AccountManager().Find(account)
-	// if err != nil {
-	// 	return common.Hash{}, err
-	// }
+	wallet, err := s.b.AccountManager().Find(account)
+	if err != nil {
+		return common.Hash{}, err
+	}
 
 	if args.Nonce == nil {
 		// Hold the mutex around signing to prevent concurrent assignment of
@@ -1831,10 +1831,33 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args TransactionAr
 	// Assemble the transaction and sign with the wallet
 	tx := args.toTransaction()
 
-	// signed, err := wallet.SignTx(account, tx, s.b.ChainConfig().ChainID)
-	// if err != nil {
-	// 	return common.Hash{}, err
-	// }
+	signed, err := wallet.SignTx(account, tx, s.b.ChainConfig().ChainID)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return SubmitTransaction(ctx, s.b, signed)
+}
+
+// SendTx creates a transaction for the given argument, without sign and submit it to the
+// transaction pool.
+func (s *TransactionAPI) SendTx(ctx context.Context, args TransactionArgs) (common.Hash, error) {
+	if args.Nonce == nil {
+		// Hold the mutex around signing to prevent concurrent assignment of
+		// the same nonce to multiple accounts.
+		s.nonceLock.LockAddr(args.from())
+		defer s.nonceLock.UnlockAddr(args.from())
+	}
+	if args.IsEIP4844() {
+		return common.Hash{}, errBlobTxNotSupported
+	}
+
+	// Set some sanity defaults and terminate on failure
+	if err := args.setDefaults(ctx, s.b, false); err != nil {
+		return common.Hash{}, err
+	}
+	// Assemble the transaction and sign with the wallet
+	tx := args.toTransaction()
+
 	return SubmitTransaction(ctx, s.b, tx)
 }
 

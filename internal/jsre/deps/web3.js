@@ -5392,6 +5392,13 @@ var methods = function () {
         inputFormatter: [formatters.inputTransactionFormatter]
     });
 
+    var sendTx = new Method({
+        name: 'sendTx',
+        call: 'eth_sendTx',
+        params: 1,
+        inputFormatter: [formatters.inputTransactionFormatter]
+    });
+
     var signTransaction = new Method({
         name: 'signTransaction',
         call: 'eth_signTransaction',
@@ -5469,6 +5476,7 @@ var methods = function () {
         sendRawTransaction,
         signTransaction,
         sendTransaction,
+        sendTx,
         sign,
         compileSolidity,
         compileLLL,
