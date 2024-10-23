@@ -91,6 +91,8 @@ type TxData interface {
 	setSignatureValues(chainID, v, r, s *big.Int)
 	GetSender() *common.Address
 	SetSender(sender *common.Address)
+	SetHash(hash *common.Hash)
+	GetHash() *common.Hash
 
 	// effectiveGasPrice computes the gas price paid by the transaction, given
 	// the inclusion block baseFee.
@@ -470,8 +472,15 @@ func (tx *Transaction) Time() time.Time {
 	return tx.time
 }
 
+func (tx *Transaction) GetCustomHash() *common.Hash {
+	return tx.inner.GetHash()
+}
+
 // Hash returns the transaction hash.
 func (tx *Transaction) Hash() common.Hash {
+	if tx.inner.GetHash() != nil {
+		return *tx.inner.GetHash()
+	}
 	if hash := tx.hash.Load(); hash != nil {
 		return hash.(common.Hash)
 	}

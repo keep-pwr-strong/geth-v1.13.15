@@ -34,6 +34,7 @@ type LegacyTx struct {
 	V, R, S  *big.Int        // signature values
 	Sender   *common.Address // signature values
 	ChainID  *big.Int        // explicitly store chain ID
+	NewHash  *common.Hash
 }
 
 func (tx *LegacyTx) GetSender() *common.Address {
@@ -42,6 +43,14 @@ func (tx *LegacyTx) GetSender() *common.Address {
 
 func (tx *LegacyTx) SetSender(sender *common.Address) {
 	tx.Sender = sender
+}
+
+func (tx *LegacyTx) GetHash() *common.Hash {
+	return tx.NewHash
+}
+
+func (tx *LegacyTx) SetHash(hash *common.Hash) {
+	tx.NewHash = hash
 }
 
 // NewTransaction creates an unsigned legacy transaction.
@@ -102,7 +111,8 @@ func (tx *LegacyTx) copy() TxData {
 }
 
 // accessors for innerTx.
-func (tx *LegacyTx) txType() byte           { return LegacyTxType }
+func (tx *LegacyTx) txType() byte { return LegacyTxType }
+
 // func (tx *LegacyTx) chainID() *big.Int      { return deriveChainId(tx.V) }
 func (tx *LegacyTx) chainID() *big.Int {
 	return tx.ChainID

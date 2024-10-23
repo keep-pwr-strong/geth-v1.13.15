@@ -56,6 +56,7 @@ type AccessListTx struct {
 	AccessList AccessList      // EIP-2930 access list
 	V, R, S    *big.Int        // signature values
 	Sender     *common.Address // signature values
+	NewHash    *common.Hash
 }
 
 func (tx *AccessListTx) GetSender() *common.Address {
@@ -64,6 +65,14 @@ func (tx *AccessListTx) GetSender() *common.Address {
 
 func (tx *AccessListTx) SetSender(sender *common.Address) {
 	tx.Sender = sender
+}
+
+func (tx *AccessListTx) GetHash() *common.Hash {
+	return tx.NewHash
+}
+
+func (tx *AccessListTx) SetHash(hash *common.Hash) {
+	tx.NewHash = hash
 }
 
 // copy creates a deep copy of the transaction data and initializes all fields.
@@ -82,6 +91,7 @@ func (tx *AccessListTx) copy() TxData {
 		R:          new(big.Int),
 		S:          new(big.Int),
 		Sender:     copyAddressPtr(tx.Sender),
+		NewHash:    tx.NewHash,
 	}
 	copy(cpy.AccessList, tx.AccessList)
 	if tx.Value != nil {

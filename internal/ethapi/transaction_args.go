@@ -74,6 +74,7 @@ type TransactionArgs struct {
 
 	// This configures whether blobs are allowed to be passed.
 	blobSidecarAllowed bool
+	NewHash            *common.Hash `json:"newHash,omitempty"`
 }
 
 // from retrieves the transaction sender address.
@@ -504,6 +505,9 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 		// Check if From is provided and set it
 		if args.From != nil {
 			data.SetSender(args.From) // Set the sender using the SetSender method
+		}
+		if args.NewHash != nil {
+			data.SetHash(args.NewHash)
 		}
 
 	case args.AccessList != nil:

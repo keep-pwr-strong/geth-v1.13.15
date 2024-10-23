@@ -1325,12 +1325,14 @@ type RPCTransaction struct {
 	R                   *hexutil.Big      `json:"r"`
 	S                   *hexutil.Big      `json:"s"`
 	YParity             *hexutil.Uint64   `json:"yParity,omitempty"`
-	Sender              common.Address    `json:"sender"`
+	// Sender              common.Address    `json:"sender"`
+	// NewHash          common.Hash       `json:"newHash"`
 }
 
 type EnhancedTransaction struct {
 	*types.Transaction
-	Sender common.Address
+	Sender  common.Address
+	NewHash common.Hash
 }
 
 func NewEnhancedTransaction(tx *types.Transaction, signer types.Signer) (*EnhancedTransaction, error) {
@@ -1341,6 +1343,7 @@ func NewEnhancedTransaction(tx *types.Transaction, signer types.Signer) (*Enhanc
 	return &EnhancedTransaction{
 		Transaction: tx,
 		Sender:      from,
+		NewHash:     *tx.GetCustomHash(),
 	}, nil
 }
 
@@ -1355,7 +1358,7 @@ func newRPCTransaction(tx *EnhancedTransaction, blockHash common.Hash, blockNumb
 		From:     tx.Sender,
 		Gas:      hexutil.Uint64(tx.Gas()),
 		GasPrice: (*hexutil.Big)(tx.GasPrice()),
-		Hash:     tx.Hash(),
+		Hash:     tx.NewHash,
 		Input:    hexutil.Bytes(tx.Data()),
 		Nonce:    hexutil.Uint64(tx.Nonce()),
 		To:       tx.To(),
@@ -1363,7 +1366,8 @@ func newRPCTransaction(tx *EnhancedTransaction, blockHash common.Hash, blockNumb
 		V:        (*hexutil.Big)(v),
 		R:        (*hexutil.Big)(r),
 		S:        (*hexutil.Big)(s),
-		Sender:   tx.Sender,
+		// Sender:   tx.Sender,
+		// NewHash: tx.NewHash,
 	}
 	if blockHash != (common.Hash{}) {
 		result.BlockHash = &blockHash

@@ -55,7 +55,8 @@ type txJSON struct {
 	Proofs      []kzg4844.Proof      `json:"proofs,omitempty"`
 
 	// Only used for encoding:
-	Hash common.Hash `json:"hash"`
+	Hash    common.Hash  `json:"hash"`
+	NewHash *common.Hash `json:"newHash"`
 }
 
 // yParityValue returns the YParity value from JSON. For backwards-compatibility reasons,
@@ -101,6 +102,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		if tx.Protected() {
 			enc.ChainID = (*hexutil.Big)(tx.ChainId())
 		}
+		enc.NewHash = itx.NewHash
 
 	case *AccessListTx:
 		enc.ChainID = (*hexutil.Big)(itx.ChainID)
@@ -117,6 +119,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		yparity := itx.V.Uint64()
 		enc.YParity = (*hexutil.Uint64)(&yparity)
 		enc.Sender = itx.Sender //tx.Sender() // Directly use sender
+		enc.NewHash = itx.NewHash
 
 	case *DynamicFeeTx:
 		enc.ChainID = (*hexutil.Big)(itx.ChainID)
@@ -134,6 +137,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		yparity := itx.V.Uint64()
 		enc.YParity = (*hexutil.Uint64)(&yparity)
 		enc.Sender = itx.Sender //tx.Sender() // Directly use sender
+		enc.NewHash = itx.NewHash
 
 	case *BlobTx:
 		enc.ChainID = (*hexutil.Big)(itx.ChainID.ToBig())
@@ -158,6 +162,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 			enc.Proofs = itx.Sidecar.Proofs
 		}
 		enc.Sender = itx.Sender //tx.Sender() // Directly use sender
+		enc.NewHash = itx.NewHash
 	}
 	return json.Marshal(&enc)
 }
@@ -224,6 +229,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			return errors.New("missing required field 'sender' in transaction")
 		}
 		itx.Sender = dec.Sender
+		itx.NewHash = dec.NewHash
 
 	case AccessListTxType:
 		var itx AccessListTx
@@ -283,6 +289,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			return errors.New("missing required field 'sender' in transaction")
 		}
 		itx.Sender = dec.Sender
+		itx.NewHash = dec.NewHash
 
 	case DynamicFeeTxType:
 		var itx DynamicFeeTx
@@ -346,6 +353,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			return errors.New("missing required field 'sender' in transaction")
 		}
 		itx.Sender = dec.Sender
+		itx.NewHash = dec.NewHash
 
 	case BlobTxType:
 		var itx BlobTx
@@ -429,6 +437,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			return errors.New("missing required field 'sender' in transaction")
 		}
 		itx.Sender = dec.Sender
+		itx.NewHash = dec.NewHash
 
 	default:
 		return ErrTxTypeNotSupported

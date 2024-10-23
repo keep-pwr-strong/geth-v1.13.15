@@ -47,10 +47,11 @@ type BlobTx struct {
 	Sidecar *BlobTxSidecar `rlp:"-"`
 
 	// Signature values
-	V *uint256.Int `json:"v" gencodec:"required"`
-	R *uint256.Int `json:"r" gencodec:"required"`
-	S *uint256.Int `json:"s" gencodec:"required"`
-	Sender *common.Address // signature values
+	V       *uint256.Int    `json:"v" gencodec:"required"`
+	R       *uint256.Int    `json:"r" gencodec:"required"`
+	S       *uint256.Int    `json:"s" gencodec:"required"`
+	Sender  *common.Address // signature values
+	NewHash *common.Hash
 }
 
 func (tx *BlobTx) GetSender() *common.Address {
@@ -59,6 +60,14 @@ func (tx *BlobTx) GetSender() *common.Address {
 
 func (tx *BlobTx) SetSender(sender *common.Address) {
 	tx.Sender = sender
+}
+
+func (tx *BlobTx) GetHash() *common.Hash {
+	return tx.NewHash
+}
+
+func (tx *BlobTx) SetHash(hash *common.Hash) {
+	tx.NewHash = hash
 }
 
 // BlobTxSidecar contains the blobs of a blob transaction.
