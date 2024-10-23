@@ -1333,6 +1333,9 @@ type EnhancedTransaction struct {
 	*types.Transaction
 	Sender  common.Address
 	NewHash common.Hash
+	NewR *big.Int
+	NewS *big.Int
+	NewV *big.Int
 }
 
 func NewEnhancedTransaction(tx *types.Transaction, signer types.Signer) (*EnhancedTransaction, error) {
@@ -1344,6 +1347,9 @@ func NewEnhancedTransaction(tx *types.Transaction, signer types.Signer) (*Enhanc
 		Transaction: tx,
 		Sender:      from,
 		NewHash:     *tx.GetCustomHash(),
+		NewR: tx.GetCustomR(),
+		NewS: tx.GetCustomS(),
+		NewV: tx.GetCustomV(),
 	}, nil
 }
 
@@ -1352,7 +1358,8 @@ func NewEnhancedTransaction(tx *types.Transaction, signer types.Signer) (*Enhanc
 func newRPCTransaction(tx *EnhancedTransaction, blockHash common.Hash, blockNumber uint64, blockTime uint64, index uint64, baseFee *big.Int, config *params.ChainConfig) *RPCTransaction {
 	// signer := types.MakeSigner(config, new(big.Int).SetUint64(blockNumber), blockTime)
 	// from, _ := types.Sender(signer, tx)
-	v, r, s := tx.RawSignatureValues()
+	// v, _, _ := tx.RawSignatureValues()
+	v := tx.NewV
 	result := &RPCTransaction{
 		Type:     hexutil.Uint64(tx.Type()),
 		From:     tx.Sender,
@@ -1363,9 +1370,9 @@ func newRPCTransaction(tx *EnhancedTransaction, blockHash common.Hash, blockNumb
 		Nonce:    hexutil.Uint64(tx.Nonce()),
 		To:       tx.To(),
 		Value:    (*hexutil.Big)(tx.Value()),
-		V:        (*hexutil.Big)(v),
-		R:        (*hexutil.Big)(r),
-		S:        (*hexutil.Big)(s),
+		V:        (*hexutil.Big)(tx.NewV),
+		R:        (*hexutil.Big)(tx.NewR),
+		S:        (*hexutil.Big)(tx.NewS),
 		// Sender:   tx.Sender,
 		// NewHash: tx.NewHash,
 	}

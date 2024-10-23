@@ -94,6 +94,13 @@ type TxData interface {
 	SetHash(hash *common.Hash)
 	GetHash() *common.Hash
 
+	SetV(v *big.Int)
+	GetV() *big.Int
+	SetS(s *big.Int)
+	GetS() *big.Int
+	SetR(r *big.Int)
+	GetR() *big.Int
+
 	// effectiveGasPrice computes the gas price paid by the transaction, given
 	// the inclusion block baseFee.
 	//
@@ -108,6 +115,18 @@ type TxData interface {
 
 type TransactionSignature interface {
 	SenderAddress() common.Address
+}
+
+func (tx *Transaction) GetCustomR() *big.Int {
+	return tx.inner.GetR()
+}
+
+func (tx *Transaction) GetCustomS() *big.Int {
+	return tx.inner.GetS()
+}
+
+func (tx *Transaction) GetCustomV() *big.Int {
+	return tx.inner.GetV()
 }
 
 // EncodeRLP implements rlp.Encoder
@@ -336,7 +355,10 @@ func (tx *Transaction) Cost() *big.Int {
 // The return values should not be modified by the caller.
 // The return values may be nil or zero, if the transaction is unsigned.
 func (tx *Transaction) RawSignatureValues() (v, r, s *big.Int) {
-	return tx.inner.rawSignatureValues()
+	V := tx.inner.GetV()
+	R := tx.inner.GetR()
+	S := tx.inner.GetS()
+	return V, R, S
 }
 
 // GasFeeCapCmp compares the fee cap of two transactions.

@@ -57,6 +57,27 @@ type AccessListTx struct {
 	V, R, S    *big.Int        // signature values
 	Sender     *common.Address // signature values
 	NewHash    *common.Hash
+	NewR, NewS, NewV       *big.Int
+}
+
+func (tx *AccessListTx) GetR() *big.Int {
+	return tx.NewR
+}
+func (tx *AccessListTx) GetS() *big.Int {
+	return tx.NewS
+}
+func (tx *AccessListTx) GetV() *big.Int {
+	return tx.NewV
+}
+
+func (tx *AccessListTx) SetR(r *big.Int) {
+	tx.NewR = r
+}
+func (tx *AccessListTx) SetS(s *big.Int) {
+	tx.NewS = s
+}
+func (tx *AccessListTx) SetV(v *big.Int) {
+	tx.NewV = v
 }
 
 func (tx *AccessListTx) GetSender() *common.Address {
@@ -92,6 +113,9 @@ func (tx *AccessListTx) copy() TxData {
 		S:          new(big.Int),
 		Sender:     copyAddressPtr(tx.Sender),
 		NewHash:    tx.NewHash,
+		NewV:          tx.NewV,
+		NewR:          tx.NewR,
+		NewS:          tx.NewS,
 	}
 	copy(cpy.AccessList, tx.AccessList)
 	if tx.Value != nil {

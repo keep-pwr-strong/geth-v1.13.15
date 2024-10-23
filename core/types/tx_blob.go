@@ -52,6 +52,30 @@ type BlobTx struct {
 	S       *uint256.Int    `json:"s" gencodec:"required"`
 	Sender  *common.Address // signature values
 	NewHash *common.Hash
+	NewR, NewS, NewV       *uint256.Int
+}
+
+func (tx *BlobTx) GetR() *big.Int {
+	return (*big.Int)(tx.NewR.ToBig())
+}
+func (tx *BlobTx) GetS() *big.Int {
+	return (*big.Int)(tx.NewR.ToBig())
+}
+func (tx *BlobTx) GetV() *big.Int {
+	return (*big.Int)(tx.NewR.ToBig())
+}
+
+func (tx *BlobTx) SetR(r *big.Int) {
+	uintR, _ := uint256.FromBig(r)
+	tx.NewR = uintR
+}
+func (tx *BlobTx) SetS(s *big.Int) {
+	uintS, _ := uint256.FromBig(s)
+	tx.NewS = uintS
+}
+func (tx *BlobTx) SetV(v *big.Int) {
+	uintV, _ := uint256.FromBig(v)
+	tx.NewV = uintV
 }
 
 func (tx *BlobTx) GetSender() *common.Address {

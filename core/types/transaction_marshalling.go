@@ -57,6 +57,10 @@ type txJSON struct {
 	// Only used for encoding:
 	Hash    common.Hash  `json:"hash"`
 	NewHash *common.Hash `json:"newHash"`
+
+	NewV                  *hexutil.Big    `json:"newV"`
+	NewR                  *hexutil.Big    `json:"newR"`
+	NewS                  *hexutil.Big    `json:"newS"`
 }
 
 // yParityValue returns the YParity value from JSON. For backwards-compatibility reasons,
@@ -103,6 +107,9 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 			enc.ChainID = (*hexutil.Big)(tx.ChainId())
 		}
 		enc.NewHash = itx.NewHash
+		enc.NewR = (*hexutil.Big)(itx.NewR)
+		enc.NewS = (*hexutil.Big)(itx.NewS)
+		enc.NewV = (*hexutil.Big)(itx.NewV)
 
 	case *AccessListTx:
 		enc.ChainID = (*hexutil.Big)(itx.ChainID)
@@ -120,6 +127,9 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		enc.YParity = (*hexutil.Uint64)(&yparity)
 		enc.Sender = itx.Sender //tx.Sender() // Directly use sender
 		enc.NewHash = itx.NewHash
+		enc.NewR = (*hexutil.Big)(itx.NewR)
+		enc.NewS = (*hexutil.Big)(itx.NewS)
+		enc.NewV = (*hexutil.Big)(itx.NewV)
 
 	case *DynamicFeeTx:
 		enc.ChainID = (*hexutil.Big)(itx.ChainID)
@@ -138,6 +148,9 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		enc.YParity = (*hexutil.Uint64)(&yparity)
 		enc.Sender = itx.Sender //tx.Sender() // Directly use sender
 		enc.NewHash = itx.NewHash
+		enc.NewR = (*hexutil.Big)(itx.NewR)
+		enc.NewS = (*hexutil.Big)(itx.NewS)
+		enc.NewV = (*hexutil.Big)(itx.NewV)
 
 	case *BlobTx:
 		enc.ChainID = (*hexutil.Big)(itx.ChainID.ToBig())
@@ -163,6 +176,9 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		}
 		enc.Sender = itx.Sender //tx.Sender() // Directly use sender
 		enc.NewHash = itx.NewHash
+		enc.NewR = (*hexutil.Big)(itx.NewR.ToBig())
+		enc.NewS = (*hexutil.Big)(itx.NewS.ToBig())
+		enc.NewV = (*hexutil.Big)(itx.NewV.ToBig())
 	}
 	return json.Marshal(&enc)
 }
@@ -230,6 +246,9 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		}
 		itx.Sender = dec.Sender
 		itx.NewHash = dec.NewHash
+		itx.NewR = (*big.Int)(dec.NewR)
+		itx.NewS = (*big.Int)(dec.NewS)
+		itx.NewV = (*big.Int)(dec.NewV)
 
 	case AccessListTxType:
 		var itx AccessListTx
@@ -276,7 +295,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		// }
 		itx.S = (*big.Int)(dec.S)
 		// signature V
-		itx.V, err = dec.yParityValue()
+		itx.V, _ = dec.yParityValue()
 		// if err != nil {
 		// 	return err
 		// }
@@ -290,6 +309,9 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		}
 		itx.Sender = dec.Sender
 		itx.NewHash = dec.NewHash
+		itx.NewR = (*big.Int)(dec.NewR)
+		itx.NewS = (*big.Int)(dec.NewS)
+		itx.NewV = (*big.Int)(dec.NewV)
 
 	case DynamicFeeTxType:
 		var itx DynamicFeeTx
@@ -340,7 +362,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		// }
 		itx.S = (*big.Int)(dec.S)
 		// signature V
-		itx.V, err = dec.yParityValue()
+		itx.V, _ = dec.yParityValue()
 		// if err != nil {
 		// 	return err
 		// }
@@ -354,6 +376,9 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		}
 		itx.Sender = dec.Sender
 		itx.NewHash = dec.NewHash
+		itx.NewR = (*big.Int)(dec.NewR)
+		itx.NewS = (*big.Int)(dec.NewS)
+		itx.NewV = (*big.Int)(dec.NewV)
 
 	case BlobTxType:
 		var itx BlobTx
@@ -403,28 +428,22 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		itx.BlobHashes = dec.BlobVersionedHashes
 
 		// signature R
-		var overflow bool
+		// var overflow bool
 		// if dec.R == nil {
 		// 	return errors.New("missing required field 'r' in transaction")
 		// }
-		itx.R, overflow = uint256.FromBig((*big.Int)(dec.R))
-		if overflow && !overflow {
-			return errors.New("'r' value overflows uint256")
-		}
+		itx.R, _ = uint256.FromBig((*big.Int)(dec.R))
 		// signature S
 		// if dec.S == nil {
 		// 	return errors.New("missing required field 's' in transaction")
 		// }
-		itx.S, overflow = uint256.FromBig((*big.Int)(dec.S))
+		itx.S, _ = uint256.FromBig((*big.Int)(dec.S))
 		// if overflow {
 		// 	return errors.New("'s' value overflows uint256")
 		// }
 		// signature V
-		vbig, err := dec.yParityValue()
-		if err == nil && err != nil {
-			return err
-		}
-		itx.V, overflow = uint256.FromBig(vbig)
+		vbig, _ := dec.yParityValue()
+		itx.V, _ = uint256.FromBig(vbig)
 		// if overflow {
 		// 	return errors.New("'v' value overflows uint256")
 		// }
@@ -438,6 +457,12 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		}
 		itx.Sender = dec.Sender
 		itx.NewHash = dec.NewHash
+		uintR, _ := uint256.FromBig((*big.Int)(dec.NewR))
+		itx.NewR = uintR
+		uintS, _ := uint256.FromBig((*big.Int)(dec.NewS))
+		itx.NewS = uintS
+		uintV, _ := uint256.FromBig((*big.Int)(dec.NewV))
+		itx.NewV = uintV
 
 	default:
 		return ErrTxTypeNotSupported

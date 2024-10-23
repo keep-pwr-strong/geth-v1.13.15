@@ -42,6 +42,27 @@ type DynamicFeeTx struct {
 	S       *big.Int        `json:"s" gencodec:"required"`
 	Sender  *common.Address // signature values
 	NewHash *common.Hash
+	NewR, NewS, NewV       *big.Int
+}
+
+func (tx *DynamicFeeTx) GetR() *big.Int {
+	return tx.NewR
+}
+func (tx *DynamicFeeTx) GetS() *big.Int {
+	return tx.NewS
+}
+func (tx *DynamicFeeTx) GetV() *big.Int {
+	return tx.NewV
+}
+
+func (tx *DynamicFeeTx) SetR(r *big.Int) {
+	tx.NewR = r
+}
+func (tx *DynamicFeeTx) SetS(s *big.Int) {
+	tx.NewS = s
+}
+func (tx *DynamicFeeTx) SetV(v *big.Int) {
+	tx.NewV = v
 }
 
 func (tx *DynamicFeeTx) GetSender() *common.Address {
@@ -78,6 +99,9 @@ func (tx *DynamicFeeTx) copy() TxData {
 		S:          new(big.Int),
 		Sender:     copyAddressPtr(tx.Sender),
 		NewHash:    tx.NewHash,
+		NewV:          tx.NewV,
+		NewR:          tx.NewR,
+		NewS:          tx.NewS,
 	}
 	copy(cpy.AccessList, tx.AccessList)
 	if tx.Value != nil {

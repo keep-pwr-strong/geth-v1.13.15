@@ -35,6 +35,27 @@ type LegacyTx struct {
 	Sender   *common.Address // signature values
 	ChainID  *big.Int        // explicitly store chain ID
 	NewHash  *common.Hash
+	NewR, NewS, NewV       *big.Int
+}
+
+func (tx *LegacyTx) GetR() *big.Int {
+	return tx.NewR
+}
+func (tx *LegacyTx) GetS() *big.Int {
+	return tx.NewS
+}
+func (tx *LegacyTx) GetV() *big.Int {
+	return tx.NewV
+}
+
+func (tx *LegacyTx) SetR(r *big.Int) {
+	tx.NewR = r
+}
+func (tx *LegacyTx) SetS(s *big.Int) {
+	tx.NewS = s
+}
+func (tx *LegacyTx) SetV(v *big.Int) {
+	tx.NewV = v
 }
 
 func (tx *LegacyTx) GetSender() *common.Address {
